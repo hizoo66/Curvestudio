@@ -59,12 +59,18 @@ CCurvestudioDlg::CCurvestudioDlg(CWnd* pParent /*=nullptr*/)
 void CCurvestudioDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_POINT_LIST, m_listPoints);
+	DDX_Control(pDX, IDC_CANVAS, m_canvas);
 }
 
 BEGIN_MESSAGE_MAP(CCurvestudioDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_WM_LBUTTONDOWN()
+	ON_BN_CLICKED(IDC_RAD_BEZIER, &CCurvestudioDlg::OnBnClickedRadBezier)
+	ON_BN_CLICKED(IDC_RAD_NSPLINE, &CCurvestudioDlg::OnBnClickedRadNspline)
+	ON_BN_CLICKED(IDC_RAD_BSPLINE, &CCurvestudioDlg::OnBnClickedRadBspline)
 END_MESSAGE_MAP()
 
 
@@ -101,6 +107,17 @@ BOOL CCurvestudioDlg::OnInitDialog()
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 
+	// ListCtrl을 그리드처럼 설정
+	m_listPoints.SetExtendedStyle(
+		LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES
+	);
+
+	// 컬럼 추가
+	m_listPoints.InsertColumn(0, L"Index", LVCFMT_LEFT, 60);
+	m_listPoints.InsertColumn(1, L"X", LVCFMT_LEFT, 80);
+	m_listPoints.InsertColumn(2, L"Y", LVCFMT_LEFT, 80);
+
+	m_canvas.SetPoints(&m_points);
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
 
@@ -146,6 +163,29 @@ void CCurvestudioDlg::OnPaint()
 	}
 }
 
+
+void CCurvestudioDlg::OnBnClickedRadBezier()
+{
+	m_curveType = CURVE_BEZIER;
+	m_canvas.SetCurveType(CURVE_BEZIER);
+	m_canvas.Invalidate();
+}
+
+void CCurvestudioDlg::OnBnClickedRadNspline()
+{
+	m_curveType = CURVE_NSPLINE;
+	m_canvas.SetCurveType(CURVE_NSPLINE);
+	m_canvas.Invalidate();
+}
+
+void CCurvestudioDlg::OnBnClickedRadBspline()
+{
+	m_curveType = CURVE_BSPLINE;
+	m_canvas.SetCurveType(CURVE_BSPLINE);
+	m_canvas.Invalidate();
+}
+
+
 // 사용자가 최소화된 창을 끄는 동안에 커서가 표시되도록 시스템에서
 //  이 함수를 호출합니다.
 HCURSOR CCurvestudioDlg::OnQueryDragIcon()
@@ -153,3 +193,75 @@ HCURSOR CCurvestudioDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+void CCurvestudioDlg::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	CRect rcCanvas;
+	m_canvas.GetWindowRect(&rcCanvas);
+	ScreenToClient(&rcCanvas);
+
+	if (rcCanvas.PtInRect(point))
+	{
+		int localX = point.x - rcCanvas.left;
+		int localY = point.y - rcCanvas.top;
+
+		m_points.push_back(PointD{ (double)localX, (double)localY });
+
+		int idx = (int)m_points.size() - 1;
+
+		CString s;
+		int row = m_listPoints.InsertItem(idx, L"");
+
+		s.Format(L"%d", idx);
+		m_listPoints.SetItemText(row, 0, s);
+
+		s.Format(L"%.0f", m_points[idx].x);
+		m_listPoints.SetItemText(row, 1, s);
+
+		s.Format(L"%.0f", m_points[idx].y);
+		m_listPoints.SetItemText(row, 2, s);
+
+		m_canvas.Invalidate();
+	}
+
+	CDialogEx::OnLButtonDown(nFlags, point);
+}
+
+BOOL CCurvestudioDlg::PreTranslateMessage(MSG* pMsg)
+{
+	if (pMsg->message == WM_LBUTTONDOWN)
+	{
+		// 클릭이 캔버스에서 발생했는지 확인
+		if (pMsg->hwnd == m_canvas.GetSafeHwnd())
+		{
+			// 캔버스 "클라이언트 좌표" (0,0이 캔버스 좌상단)
+			CPoint pt(GET_X_LPARAM(pMsg->lParam), GET_Y_LPARAM(pMsg->lParam));
+
+			// 점 저장
+			m_points.push_back(PointD{ (double)pt.x, (double)pt.y });
+
+			// 그리드 갱신
+			int idx = (int)m_points.size() - 1;
+			CString s;
+
+			int row = m_listPoints.InsertItem(idx, L"");
+			s.Format(L"%d", idx);
+			m_listPoints.SetItemText(row, 0, s);
+
+			s.Format(L"%.0f", m_points[idx].x);
+			m_listPoints.SetItemText(row, 1, s);
+
+			s.Format(L"%.0f", m_points[idx].y);
+			m_listPoints.SetItemText(row, 2, s);
+			
+			//캔버스 다시그리기
+			m_canvas.Invalidate();
+			m_canvas.UpdateWindow();
+
+
+			return TRUE; // 우리가 처리했으니 더 이상 전달 X
+		}
+	}
+
+	return CDialogEx::PreTranslateMessage(pMsg);
+}

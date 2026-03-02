@@ -183,6 +183,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CanvasStatic.h" />
     <ClInclude Include="Curvestudio.h" />
     <ClInclude Include="CurvestudioDlg.h" />
     <ClInclude Include="framework.h" />
@@ -191,6 +192,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CanvasStatic.cpp" />
     <ClCompile Include="Curvestudio.cpp" />
     <ClCompile Include="CurvestudioDlg.cpp" />
     <ClCompile Include="pch.cpp">
